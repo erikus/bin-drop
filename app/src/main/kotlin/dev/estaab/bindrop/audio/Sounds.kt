@@ -27,6 +27,7 @@ class Sounds(context: Context) {
         Sfx.CHIME to pool.load(context, R.raw.sfx_chime, 1),
         Sfx.BOING to pool.load(context, R.raw.sfx_boing, 1),
         Sfx.BIGWIN to pool.load(context, R.raw.sfx_bigwin, 1),
+        Sfx.MAGIC to pool.load(context, R.raw.sfx_magic, 1),
     )
 
     var enabled = true

@@ -50,13 +50,15 @@ private const val VELOCITY_WINDOW = 0.1f           // seconds of finger history 
 // Gameplay.
 private const val TARGET_ITEMS = 5
 private const val BIG_WIN_EVERY = 5
+private const val SCENE_EVERY = 3                  // captures per background change
+private const val SCENE_REVEAL_TIME = 1.1f         // seconds for the new background to wipe in
 private const val CONFETTI_PER_CAPTURE = 40
 private const val CONFETTI_RAIN = 160
 private const val BIN_HAPPY_TIME = 1.2f
 private const val STAR_POP_SIZE_FRAC = 0.12f
 private const val PARTY_POP_SIZE_FRAC = 0.2f
 
-enum class Sfx { POP, DROP, CHIME, BOING, BIGWIN }
+enum class Sfx { POP, DROP, CHIME, BOING, BIGWIN, MAGIC }
 
 enum class ItemState { FREE, HELD, FLYING, SINKING }
 
@@ -134,6 +136,17 @@ class GameWorld(private val random: Random = Random.Default) {
     var time = 0f
         private set
     var captures = 0
+        private set
+    /** Index into [Scenes.all] of the background currently (or being) shown. */
+    var sceneIndex = 0
+        private set
+    /** 0..1 progress of the circular wipe from the previous scene to [sceneIndex]; 1 = settled. */
+    var sceneReveal = 1f
+        private set
+    /** Where the wipe grows from (the bin that triggered the change). */
+    var sceneRevealX = 0f
+        private set
+    var sceneRevealY = 0f
         private set
     val groundY: Float get() = height * GROUND_Y_FRAC
 
@@ -340,6 +353,7 @@ class GameWorld(private val random: Random = Random.Default) {
             if (bin.blinkPhase > 0f) bin.blinkPhase -= dt
         }
         particles.step(dt)
+        if (sceneReveal < 1f) sceneReveal = min(1f, sceneReveal + dt / SCENE_REVEAL_TIME)
     }
 
     private fun stepHeld(item: Item, dt: Float) {
@@ -479,6 +493,16 @@ class GameWorld(private val random: Random = Random.Default) {
             particles.pop(width * 0.75f, height * 0.35f, h, Sprites.SPARKLES, PARTY_POP_SIZE_FRAC)
             sounds.add(Sfx.BIGWIN)
         }
+        if (captures % SCENE_EVERY == 0) changeScene(bin)
+    }
+
+    private fun changeScene(from: Bin) {
+        sceneIndex = (sceneIndex + 1) % Scenes.all.size
+        sceneReveal = 0f
+        sceneRevealX = from.centerX
+        sceneRevealY = from.mouthY
+        for (b in bins) b.sinceWiggle = 0f
+        sounds.add(Sfx.MAGIC)
     }
 
     /** Keeps resting items from piling into one spot so each stays grabbable. */

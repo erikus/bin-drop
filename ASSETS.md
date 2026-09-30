@@ -51,6 +51,7 @@ to about -3 dBFS with ffmpeg. The Kenney sounds are otherwise unmodified.
 | sfx_pop.ogg | Kenney "Interface Sounds" — https://kenney.nl/assets/interface-sounds | Audio/pluck_001.ogg | CC0 1.0 |
 | sfx_drop.ogg | Kenney "Impact Sounds" — https://kenney.nl/assets/impact-sounds | Audio/impactSoft_medium_001.ogg | CC0 1.0 |
 | sfx_chime.ogg | Kenney "Interface Sounds" — https://kenney.nl/assets/interface-sounds | Audio/confirmation_001.ogg | CC0 1.0 |
+| sfx_magic.ogg | Synthesized for this project (`tools/make_magic_sfx.py`: C5-E5-G5-C6 arpeggio with shimmer, 0.9 s) | — | none (original work) |
 | sfx_boing.ogg | Synthesized for this project (numpy: sine sweep 220→400 Hz with decaying 14 Hz pitch wobble, 0.55 s) | — | none (original work) |
 | sfx_bigwin.ogg | Kenney "Digital Audio" — https://kenney.nl/assets/digital-audio | Audio/powerUp1.ogg | CC0 1.0 |
 

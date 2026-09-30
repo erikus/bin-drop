@@ -117,6 +117,30 @@ class GameWorldTest {
     }
 
     @Test
+    fun `every third capture changes the scene with a wipe from that bin`() {
+        val w = world(easy = true)
+        w.settle()
+        assertEquals(0, w.sceneIndex)
+        assertEquals(1f, w.sceneReveal)
+        repeat(3) {
+            w.sounds.clear()
+            val item = w.items.first { it.state == ItemState.FREE }
+            w.pointerDown(POINTER, item.x, item.y)
+            w.step(DT)
+            w.pointerUp(POINTER)
+            w.run(1.2f)
+        }
+        assertEquals(3, w.captures)
+        assertEquals(1, w.sceneIndex)
+        assertTrue("wipe in progress", w.sceneReveal in 0f..0.99f)
+        assertTrue(w.sounds.contains(Sfx.MAGIC))
+        val bin = w.bins.first { it.count > 0 && it.centerX == w.sceneRevealX }
+        assertEquals(bin.mouthY, w.sceneRevealY)
+        w.run(2f)
+        assertEquals(1f, w.sceneReveal)
+    }
+
+    @Test
     fun `every fifth capture plays the big win`() {
         val w = world(easy = true)
         w.settle()

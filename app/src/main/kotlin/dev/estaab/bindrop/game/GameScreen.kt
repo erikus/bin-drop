@@ -47,9 +47,11 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.scale
@@ -69,6 +71,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.math.cos
 import kotlin.math.exp
 import kotlin.math.hypot
+import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sin
 
@@ -76,14 +79,19 @@ private const val MAX_DT = 0.05f
 private const val PARENT_HOLD_MS = 1500L
 private const val EMOJI_SAMPLE_SIZE = 2          // 512 px source → 256 px in memory
 
-private val SKY_TOP = Color(0xFF8ED6FF)
-private val SKY_BOTTOM = Color(0xFFDDF4FF)
 private val SUN = Color(0xFFFFE066)
 private val SUN_GLOW = Color(0x55FFE066)
-private val CLOUD = Color(0xFFFFFFFF)
-private val GRASS = Color(0xFF7BCB5B)
-private val GRASS_DARK = Color(0xFF5FAE43)
-private val DIRT = Color(0xFFA8794E)
+private val LOW_SUN = Color(0xFFFF8A3D)
+private val LOW_SUN_GLOW = Color(0x66FFB347)
+private val MOON = Color(0xFFF6F1D3)
+private val MOON_GLOW = Color(0x33F6F1D3)
+private val MOON_CRATER = Color(0xFFD9D2B0)
+private val STAR = Color(0xFFFFFFFF)
+private val SNOWFLAKE = Color(0xFFFFFFFF)
+private val FIREFLY = Color(0xFFDFFF6A)
+private val BUBBLE = Color(0x66FFFFFF)
+private val PETAL = Color(0xFFFFB7D5)
+private val RAINBOW_COLORS = listOf(0xFFFF5E5E, 0xFFFFA943, 0xFFFFE666, 0xFF7ED957, 0xFF5AB4FF, 0xFF9B7BFF).map { Color(it) }
 private val SHADOW = Color(0x33000000)
 private val INTERIOR = Color(0xFF1B1E24)
 private val WHEEL = Color(0xFF2B2B2B)
@@ -98,6 +106,22 @@ private const val CLOUD_SPEED_FRAC = 0.02f       // W/s
 private const val SUN_X_FRAC = 0.09f
 private const val SUN_Y_FRAC = 0.16f
 private const val SUN_R_FRAC = 0.07f
+private const val LOW_SUN_X_FRAC = 0.26f         // over the item zone so the bins do not hide it
+private const val LOW_SUN_Y_FRAC = 0.62f         // sits on the horizon at sunset
+private const val LOW_SUN_R_FRAC = 0.13f
+private const val RAINBOW_R_FRAC = 0.75f         // of H, outer radius; centred below the horizon
+private const val RAINBOW_BAND_FRAC = 0.035f     // of H, per colour band
+private const val STAR_COUNT = 40
+private const val SNOW_COUNT = 70
+private const val SNOW_FALL_FRAC = 0.08f         // H/s
+private const val FIREFLY_COUNT = 18
+private const val BUBBLE_COUNT = 24
+private const val BUBBLE_RISE_FRAC = 0.06f       // H/s
+private const val PETAL_COUNT = 30
+private const val PETAL_FALL_FRAC = 0.05f        // H/s
+private const val PETAL_DRIFT_FRAC = 0.03f       // W/s
+private const val AMBIENT_SIZE_FRAC = 0.012f     // of H, base radius of small decorations
+private const val TWO_PI = (2 * Math.PI).toFloat()
 private const val GRASS_H_FRAC = 0.035f
 private const val BIN_TAPER_FRAC = 0.07f         // of bin width, per side, at the bottom
 private const val BIN_LIP_FRAC = 0.045f          // of bin height
@@ -164,7 +188,7 @@ fun GameScreen(settings: Settings, sounds: Sounds) {
         }
     }
 
-    Box(Modifier.fillMaxSize().background(SKY_TOP)) {
+    Box(Modifier.fillMaxSize().background(Color(Scenes.all.first().skyTop))) {
         Canvas(
             modifier = Modifier
                 .fillMaxSize()
@@ -305,25 +329,133 @@ private fun DrawScope.drawScene(world: GameWorld, palette: Palette, sprites: Spr
 }
 
 private fun DrawScope.drawBackground(world: GameWorld, w: Float, h: Float) {
-    drawRect(Brush.verticalGradient(0f to SKY_TOP, 1f to SKY_BOTTOM, startY = 0f, endY = world.groundY))
+    val scenes = Scenes.all
+    val current = scenes[world.sceneIndex]
+    if (world.sceneReveal >= 1f) {
+        drawScene(current, world, w, h)
+        return
+    }
+    // Circular wipe: the previous scene stays underneath while the new one grows out of the bin.
+    val previous = scenes[(world.sceneIndex + scenes.size - 1) % scenes.size]
+    drawScene(previous, world, w, h)
+    val maxR = hypot(max(world.sceneRevealX, w - world.sceneRevealX), max(world.sceneRevealY, h - world.sceneRevealY))
+    val reveal = Path().apply { addOval(Rect(Offset(world.sceneRevealX, world.sceneRevealY), maxR * easeOutQuad(world.sceneReveal))) }
+    clipPath(reveal) { drawScene(current, world, w, h) }
+}
+
+private fun easeOutQuad(t: Float): Float = 1f - (1f - t) * (1f - t)
+
+private fun DrawScope.drawScene(scene: Scene, world: GameWorld, w: Float, h: Float) {
+    val gy = world.groundY
+    drawRect(Brush.verticalGradient(0f to Color(scene.skyTop), 1f to Color(scene.skyBottom), startY = 0f, endY = gy))
+    when (scene.sky) {
+        SkyObject.SUN -> drawSun(w, h)
+        SkyObject.LOW_SUN -> {
+            val c = Offset(w * LOW_SUN_X_FRAC, h * LOW_SUN_Y_FRAC)
+            val r = h * LOW_SUN_R_FRAC
+            drawCircle(LOW_SUN_GLOW, r * 1.8f, c)
+            clipRect(top = 0f, bottom = gy) { drawCircle(LOW_SUN, r, c) }
+        }
+        SkyObject.MOON -> {
+            val c = Offset(w * (1f - SUN_X_FRAC), h * SUN_Y_FRAC)
+            val r = h * SUN_R_FRAC
+            drawCircle(MOON_GLOW, r * 1.7f, c)
+            drawCircle(MOON, r, c)
+            drawCircle(MOON_CRATER, r * 0.22f, c + Offset(-r * 0.3f, -r * 0.2f))
+            drawCircle(MOON_CRATER, r * 0.14f, c + Offset(r * 0.35f, r * 0.25f))
+            drawCircle(MOON_CRATER, r * 0.1f, c + Offset(r * 0.05f, r * 0.45f))
+        }
+        SkyObject.RAINBOW -> {
+            drawSun(w, h)
+            val band = h * RAINBOW_BAND_FRAC
+            val outer = h * RAINBOW_R_FRAC
+            val centre = Offset(w * 0.5f, gy + h * 0.15f)
+            clipRect(top = 0f, bottom = gy) {
+                for ((i, c) in RAINBOW_COLORS.withIndex()) {
+                    val r = outer - band * i - band / 2
+                    drawCircle(c.copy(alpha = 0.75f), r, centre, style = Stroke(width = band))
+                }
+            }
+        }
+        SkyObject.NONE -> Unit
+    }
+    drawAmbient(scene.ambient, Color(scene.cloud), world.time, w, h, gy)
+    drawRect(Color(scene.dirt), Offset(0f, gy), Size(w, h - gy))
+    drawRect(Color(scene.grass), Offset(0f, gy), Size(w, h * GRASS_H_FRAC))
+    drawRect(Color(scene.grassDark), Offset(0f, gy + h * GRASS_H_FRAC * 0.8f), Size(w, h * GRASS_H_FRAC * 0.2f))
+}
+
+private fun DrawScope.drawSun(w: Float, h: Float) {
     val sunR = h * SUN_R_FRAC
     drawCircle(SUN_GLOW, sunR * 1.6f, Offset(w * SUN_X_FRAC, h * SUN_Y_FRAC))
     drawCircle(SUN, sunR, Offset(w * SUN_X_FRAC, h * SUN_Y_FRAC))
+}
+
+/** Cheap deterministic pseudo-random in [0,1) so decorations need no stored state. */
+private fun hash01(i: Int, salt: Int): Float {
+    var x = i * 374761393 + salt * 668265263
+    x = (x xor (x ushr 13)) * 1274126177
+    return ((x xor (x ushr 16)) and 0xFFFFFF) / 16777216f
+}
+
+private fun DrawScope.drawAmbient(ambient: Ambient, cloud: Color, time: Float, w: Float, h: Float, gy: Float) {
+    val base = h * AMBIENT_SIZE_FRAC
+    when (ambient) {
+        Ambient.CLOUDS -> drawClouds(time, w, h, cloud)
+        Ambient.STARS -> for (i in 0 until STAR_COUNT) {
+            val twinkle = 0.5f + 0.5f * sin(time * (1.5f + hash01(i, 3) * 2f) + hash01(i, 4) * TWO_PI)
+            drawCircle(STAR.copy(alpha = 0.3f + 0.7f * twinkle), base * (0.3f + 0.5f * hash01(i, 5)), Offset(w * hash01(i, 1), gy * 0.7f * hash01(i, 2)))
+        }
+        Ambient.SNOW -> for (i in 0 until SNOW_COUNT) {
+            val speed = h * SNOW_FALL_FRAC * (0.7f + 0.6f * hash01(i, 3))
+            val y = (h * hash01(i, 2) + time * speed) % (gy + base * 2) - base
+            val x = w * hash01(i, 1) + sin(time * 0.8f + hash01(i, 4) * TWO_PI) * base * 3
+            drawCircle(SNOWFLAKE.copy(alpha = 0.85f), base * (0.35f + 0.5f * hash01(i, 5)), Offset(x, y))
+        }
+        Ambient.FIREFLIES -> for (i in 0 until FIREFLY_COUNT) {
+            val phase = hash01(i, 4) * TWO_PI
+            val x = w * hash01(i, 1) + sin(time * 0.5f + phase) * w * 0.04f
+            val y = gy * (0.35f + 0.6f * hash01(i, 2)) + cos(time * 0.7f + phase) * h * 0.03f
+            val glow = (0.5f + 0.5f * sin(time * (2f + hash01(i, 3) * 3f) + phase)).let { it * it }
+            drawCircle(FIREFLY.copy(alpha = 0.25f * glow), base * 2.2f, Offset(x, y))
+            drawCircle(FIREFLY.copy(alpha = 0.3f + 0.7f * glow), base * 0.55f, Offset(x, y))
+        }
+        Ambient.BUBBLES -> for (i in 0 until BUBBLE_COUNT) {
+            val speed = h * BUBBLE_RISE_FRAC * (0.6f + 0.8f * hash01(i, 3))
+            val span = gy + base * 6
+            val y = span - ((h * hash01(i, 2) + time * speed) % span)
+            val x = w * hash01(i, 1) + sin(time * 1.2f + hash01(i, 4) * TWO_PI) * base * 2
+            val r = base * (0.6f + 1.4f * hash01(i, 5))
+            drawCircle(BUBBLE, r, Offset(x, y))
+            drawCircle(Color.White.copy(alpha = 0.6f), r * 0.25f, Offset(x - r * 0.35f, y - r * 0.35f))
+        }
+        Ambient.PETALS -> {
+            drawClouds(time, w, h, cloud)
+            for (i in 0 until PETAL_COUNT) {
+                val fall = h * PETAL_FALL_FRAC * (0.7f + 0.6f * hash01(i, 3))
+                val y = (h * hash01(i, 2) + time * fall) % (gy + base * 2) - base
+                val x = (w * hash01(i, 1) + time * w * PETAL_DRIFT_FRAC + sin(time * 1.5f + hash01(i, 4) * TWO_PI) * base * 4) % (w + base * 4) - base * 2
+                val rot = time * 120f * (hash01(i, 5) - 0.5f)
+                rotate(rot, Offset(x, y)) {
+                    drawOval(PETAL, Offset(x - base * 1.1f, y - base * 0.6f), Size(base * 2.2f, base * 1.2f))
+                }
+            }
+        }
+    }
+}
+
+private fun DrawScope.drawClouds(time: Float, w: Float, h: Float, color: Color) {
     for (i in 0 until CLOUD_COUNT) {
         val cloudW = h * (0.18f + 0.05f * i)
         val span = w + cloudW * 2
-        val x = ((w * 0.3f * i + world.time * w * CLOUD_SPEED_FRAC * (1f + 0.3f * i)) % span) - cloudW
+        val x = ((w * 0.3f * i + time * w * CLOUD_SPEED_FRAC * (1f + 0.3f * i)) % span) - cloudW
         val y = h * (0.12f + 0.11f * i)
         val r = cloudW * 0.22f
-        drawCircle(CLOUD, r, Offset(x, y))
-        drawCircle(CLOUD, r * 1.3f, Offset(x + r * 1.1f, y - r * 0.3f))
-        drawCircle(CLOUD, r, Offset(x + r * 2.3f, y))
-        drawRect(CLOUD, Offset(x, y), Size(r * 2.3f, r))
+        drawCircle(color, r, Offset(x, y))
+        drawCircle(color, r * 1.3f, Offset(x + r * 1.1f, y - r * 0.3f))
+        drawCircle(color, r, Offset(x + r * 2.3f, y))
+        drawRect(color, Offset(x, y), Size(r * 2.3f, r))
     }
-    val gy = world.groundY
-    drawRect(DIRT, Offset(0f, gy), Size(w, h - gy))
-    drawRect(GRASS, Offset(0f, gy), Size(w, h * GRASS_H_FRAC))
-    drawRect(GRASS_DARK, Offset(0f, gy + h * GRASS_H_FRAC * 0.8f), Size(w, h * GRASS_H_FRAC * 0.2f))
 }
 
 private fun DrawScope.drawBin(bin: Bin, colors: BinColors, gaze: Item?, sinking: List<Item>, sprites: SpriteCache) {

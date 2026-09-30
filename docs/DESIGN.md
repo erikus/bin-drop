@@ -29,6 +29,7 @@ answers: every bin accepts every item.
 - Release: velocity = finger velocity clamped (`MAX_THROW`); gravity pulls it down; bounces on the ground with damping; bounces off screen sides.
 - Capture: item is falling (vy > 0), not held, its centre x within the bin mouth (± magnet margin), and its centre y crosses the mouth y this frame → item becomes *sinking*: keeps falling behind the bin's front wall for `SINK_TIME`, then is removed.
 - Celebration on capture: confetti burst (40) + star ring from the mouth, bin squash-and-stretch and lid flap, happy eyes for 1 s, ⭐ pop, `sfx_drop` + `sfx_chime`. Every 5th capture: full-screen confetti rain + 🎉 + `sfx_bigwin`.
+- Every 3rd capture: the background changes (`Scenes.kt`, 7 looks: day, sunset, night, snow, spring, ocean, dusk — each with its own sky object and animated ambient decoration) via a circular wipe growing out of the bin that took the item, all bins wiggle, `sfx_magic`. Novelty to hold a toddler's attention.
 - Tapping a bin: wiggle + `sfx_boing`. Bin eyes follow the nearest held item.
 - Multi-touch: each pointer id owns at most one item.
 
@@ -60,7 +61,7 @@ Items (Noto Emoji `2D/png/512/emoji_u<hex>.png` → `res/drawable-nodpi/emoji_<n
 
 Effects / decoration: star `2b50`, party `1f389`, sparkles `2728`, heart `2764`, recycle `267b`, seedling `1f331`.
 
-Sounds (`res/raw/`): `sfx_pop.ogg` (pick up), `sfx_drop.ogg` (lands in bin), `sfx_chime.ogg` (success), `sfx_boing.ogg` (bin tapped), `sfx_bigwin.ogg` (every 5th). Attribution in `ASSETS.md`.
+Sounds (`res/raw/`): `sfx_pop.ogg` (pick up), `sfx_drop.ogg` (lands in bin), `sfx_chime.ogg` (success), `sfx_boing.ogg` (bin tapped), `sfx_bigwin.ogg` (every 5th), `sfx_magic.ogg` (scene change, synthesized by `tools/make_magic_sfx.py`). Attribution in `ASSETS.md`.
 
 ## Layout
 
@@ -68,6 +69,7 @@ Sounds (`res/raw/`): `sfx_pop.ogg` (pick up), `sfx_drop.ogg` (lands in bin), `sf
 app/src/main/kotlin/dev/estaab/bindrop/
   MainActivity.kt        fullscreen, keys, hosts GameScreen
   Settings.kt            SharedPreferences-backed easy/sound/palette
+  game/Scenes.kt         background looks rotated every 3 captures
   audio/Sounds.kt        SoundPool wrapper
   game/Palette.kt        palettes
   game/Items.kt          item catalog (name → drawable, kind)
