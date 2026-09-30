@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Adaptive icon foreground: side view of a blue wheeled recycling cart with an
+     open lid and a banana dropping in. Artwork stays inside the 66dp safe zone
+     (x/y 21..87) of the 108dp viewport. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Lid, hinged at the back (right) and tilted open upward -->
+    <path
+        android:fillColor="#174A99"
+        android:pathData="M72,45 L77,43 L69,23 Q67,21.5 65,23 L64.5,24.5 Z" />
+
+    <!-- Handle sticking out the back -->
+    <path
+        android:fillColor="#174A99"
+        android:pathData="M73,48 L80,47 Q82,47 82,49 L82,51 Q82,53 80,53 L73,53 Z" />
+
+    <!-- Tapered body -->
+    <path
+        android:fillColor="#1E5EBF"
+        android:pathData="M34,45 L75,45 L71.5,80 L37.5,80 Z" />
+
+    <!-- Rim around the mouth -->
+    <path
+        android:fillColor="#174A99"
+        android:pathData="M32.5,42 L76.5,42 L76,47 L33,47 Z" />
+
+    <!-- Front label -->
+    <path
+        android:fillColor="#CFE0F7"
+        android:pathData="M45,54 L63,54 Q64,54 64,55 L64,64 Q64,65 63,65 L45,65 Q44,65 44,64 L44,55 Q44,54 45,54 Z" />
+    <!-- Label stripe -->
+    <path
+        android:fillColor="#1E5EBF"
+        android:pathData="M47,58.5 L61,58.5 L61,60.5 L47,60.5 Z" />
+
+    <!-- Wheels -->
+    <path
+        android:fillColor="#2B2B2B"
+        android:pathData="M36,81 a6,6 0 1,0 12,0 a6,6 0 1,0 -12,0 Z" />
+    <path
+        android:fillColor="#2B2B2B"
+        android:pathData="M60,81 a6,6 0 1,0 12,0 a6,6 0 1,0 -12,0 Z" />
+    <!-- Hubs -->
+    <path
+        android:fillColor="#A8A8A8"
+        android:pathData="M39.5,81 a2.5,2.5 0 1,0 5,0 a2.5,2.5 0 1,0 -5,0 Z" />
+    <path
+        android:fillColor="#A8A8A8"
+        android:pathData="M63.5,81 a2.5,2.5 0 1,0 5,0 a2.5,2.5 0 1,0 -5,0 Z" />
+
+    <!-- Banana hovering above the mouth -->
+    <path
+        android:fillColor="#FFD23F"
+        android:pathData="M38,26 C40,37 54,40 61,30 C62,28.5 60.5,27.5 59.5,29 C54,34 44,33 40,25 C39.5,24 37.8,24.5 38,26 Z" />
+    <!-- Banana stem and tip -->
+    <path
+        android:fillColor="#6B4A1E"
+        android:pathData="M59.5,29 L62.5,25.5 L64,26.8 L61,30.2 Z" />
+    <path
+        android:fillColor="#6B4A1E"
+        android:pathData="M37.6,24.6 L39.6,24 L40,25.6 L38,26.2 Z" />
+</vector>
