@@ -29,7 +29,7 @@ answers: every bin accepts every item.
 - Release: velocity = finger velocity clamped (`MAX_THROW`); gravity pulls it down; bounces on the ground with damping; bounces off screen sides.
 - Capture: item is falling (vy > 0), not held, its centre x within the bin mouth (± magnet margin), and its centre y crosses the mouth y this frame → item becomes *sinking*: keeps falling behind the bin's front wall for `SINK_TIME`, then is removed.
 - Celebration on capture: confetti burst (40) + star ring from the mouth, bin squash-and-stretch and lid flap, happy eyes for 1 s, ⭐ pop, `sfx_drop` + `sfx_chime`. Every 5th capture: full-screen confetti rain + 🎉 + `sfx_bigwin`.
-- Every 3rd capture: the background changes (`Scenes.kt`, 7 looks: day, sunset, night, snow, spring, ocean, dusk — each with its own sky object and animated ambient decoration) via a circular wipe growing out of the bin that took the item, all bins wiggle, `sfx_magic`. Novelty to hold a toddler's attention.
+- Every 3rd capture: the background changes (`Scenes.kt`, 7 looks: day, sunset, night, snow, spring, ocean, dusk — each with its own sky object and animated ambient decoration) via a circular wipe growing out of the bin that took the item, all bins wiggle, `sfx_magic`. Novelty to hold a toddler's attention. Each scene has its own item set (`ItemCatalog.byScene`: picnic food at sunset, bedtime things at night, winter gear in snow, garden bugs and flowers in spring, sea creatures at the ocean, camping things at dusk); on a scene change the resting items poof away with a sparkle and the new set rains in.
 - Tapping a bin: wiggle + `sfx_boing`. Bin eyes follow the nearest held item.
 - Multi-touch: each pointer id owns at most one item.
 

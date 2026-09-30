@@ -52,6 +52,8 @@ private const val TARGET_ITEMS = 5
 private const val BIG_WIN_EVERY = 5
 private const val SCENE_EVERY = 3                  // captures per background change
 private const val SCENE_REVEAL_TIME = 1.1f         // seconds for the new background to wipe in
+private const val SCENE_RESPAWN_DELAY = 0.9f       // pause before the new scene's items start raining in
+private const val POOF_SIZE_FRAC = 0.1f            // of H, sparkle shown where an old-scene item vanished
 private const val CONFETTI_PER_CAPTURE = 40
 private const val CONFETTI_RAIN = 160
 private const val BIN_HAPPY_TIME = 1.2f
@@ -155,6 +157,7 @@ class GameWorld(private val random: Random = Random.Default) {
     private var lastInteraction = 0f
     private var idleHopTimer = 0f
     private var nextFlightBin = 0
+    private var poofPending = false
 
     fun resize(w: Float, h: Float) {
         if (w == width && h == height) return
@@ -195,7 +198,11 @@ class GameWorld(private val random: Random = Random.Default) {
         val zoneRight = width * BIN_ZONE_LEFT_FRAC - r
         val x = r + random.nextFloat() * (zoneRight - 2 * r)
         val y = if (initial) groundY - r - random.nextFloat() * height * 0.5f else -2 * r
-        val spec = ItemCatalog.all[random.nextInt(ItemCatalog.all.size)]
+        // Prefer kinds not already on screen so the set stays varied.
+        val pool = ItemCatalog.forScene(Scenes.all[sceneIndex])
+        val fresh = pool.filter { spec -> items.none { it.spec === spec } }
+        val choices = if (fresh.isEmpty()) pool else fresh
+        val spec = choices[random.nextInt(choices.size)]
         val item = Item(nextId++, spec, x, y, r)
         item.vx = (random.nextFloat() - 0.5f) * height * 0.2f
         item.spin = (random.nextFloat() - 0.5f) * 90f
@@ -339,6 +346,7 @@ class GameWorld(private val random: Random = Random.Default) {
                 }
             }
         }
+        if (poofPending) poofRestingItems()
         separateRestingItems(dt)
         stepSpawn(dt)
         stepIdleHop(dt)
@@ -503,6 +511,19 @@ class GameWorld(private val random: Random = Random.Default) {
         sceneRevealY = from.mouthY
         for (b in bins) b.sinceWiggle = 0f
         sounds.add(Sfx.MAGIC)
+        poofPending = true
+    }
+
+    /** Resting items belong to the old scene: poof them so the new set rains in. Runs outside item iteration. */
+    private fun poofRestingItems() {
+        poofPending = false
+        val leaving = items.filter { it.state == ItemState.FREE }
+        for (item in leaving) {
+            particles.pop(item.x, item.y, height, Sprites.SPARKLES, POOF_SIZE_FRAC)
+            particles.ring(item.x, item.y, height, 0xFFFFFFFF)
+        }
+        items.removeAll(leaving)
+        spawnTimer = SCENE_RESPAWN_DELAY
     }
 
     /** Keeps resting items from piling into one spot so each stays grabbable. */

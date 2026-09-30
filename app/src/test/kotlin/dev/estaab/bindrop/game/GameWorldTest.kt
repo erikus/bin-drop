@@ -141,6 +141,41 @@ class GameWorldTest {
     }
 
     @Test
+    fun `a scene change swaps the resting items for the new scene's set`() {
+        val w = world(easy = true)
+        w.settle()
+        val dayNames = ItemCatalog.forScene(Scenes.all[0]).map { it.name }.toSet()
+        assertTrue(w.items.all { it.spec.name in dayNames })
+        repeat(3) {
+            val item = w.items.first { it.state == ItemState.FREE }
+            w.pointerDown(POINTER, item.x, item.y)
+            w.step(DT)
+            w.pointerUp(POINTER)
+            w.run(1.2f)
+        }
+        assertEquals(1, w.sceneIndex)
+        w.run(6f)
+        val sunsetNames = ItemCatalog.forScene(Scenes.all[1]).map { it.name }.toSet()
+        assertEquals(5, w.items.size)
+        for (item in w.items) {
+            assertTrue("${item.spec.name} is not a Sunset item", item.spec.name in sunsetNames)
+            assertTrue(item.onGround)
+        }
+    }
+
+    @Test
+    fun `spawned items avoid duplicates while the pool allows`() {
+        val w = world()
+        w.settle()
+        assertEquals(5, w.items.map { it.spec.name }.toSet().size)
+    }
+
+    @Test
+    fun `every scene has an item set`() {
+        for (scene in Scenes.all) assertTrue(scene.name, ItemCatalog.forScene(scene).size >= 5)
+    }
+
+    @Test
     fun `every fifth capture plays the big win`() {
         val w = world(easy = true)
         w.settle()

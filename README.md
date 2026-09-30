@@ -9,7 +9,8 @@ asset sources and licenses.
 
 - **Drag** an item and let go above a bin: it falls in, the bin bounces and grins,
   confetti and stars fly. Every 5th drop gets a bigger celebration; every 3rd drop
-  wipes in a new background (day → sunset → night → snow → spring → ocean → dusk).
+  wipes in a new background (day → sunset → night → snow → spring → ocean → dusk),
+  each with its own set of things to throw away.
 - **Tap** a bin to make it wiggle.
 - **Any gamepad button / d-pad** swaps the bin colours (5 palettes). Back and
   volume keys are swallowed; leave the game with Home.
