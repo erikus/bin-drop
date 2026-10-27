@@ -107,6 +107,75 @@ class GameWorldTest {
     }
 
     @Test
+    fun `a drag that starts on empty ground picks up the first item it crosses`() {
+        val w = world()
+        w.settle()
+        val item = w.items.minBy { it.x }
+        // Start well above the ground, clear of every item, then sweep down through the item's centre.
+        w.pointerDown(POINTER, item.x, H * 0.1f)
+        assertTrue(w.items.none { it.state == ItemState.HELD })
+        w.step(DT)
+        w.pointerMove(POINTER, item.x, item.y)
+        assertEquals(ItemState.HELD, item.state)
+        assertEquals(POINTER, item.heldBy)
+    }
+
+    @Test
+    fun `a fast sweep between two samples still picks up the item it jumped over`() {
+        val w = world()
+        w.settle()
+        val item = w.items.minBy { it.x }
+        w.pointerDown(POINTER, item.x - item.radius * 3, item.y)
+        w.step(DT)
+        w.pointerMove(POINTER, item.x + item.radius * 3, item.y)
+        assertEquals(ItemState.HELD, item.state)
+    }
+
+    @Test
+    fun `a finger already holding an item does not pick up a second one`() {
+        val w = world()
+        w.settle()
+        val first = w.items.minBy { it.x }
+        w.pointerDown(POINTER, first.x, first.y)
+        w.step(DT)
+        for (other in w.items.filter { it !== first }) {
+            w.pointerMove(POINTER, other.x, other.y)
+            w.step(DT)
+        }
+        assertEquals(1, w.items.count { it.state == ItemState.HELD })
+        assertEquals(ItemState.HELD, first.state)
+    }
+
+    @Test
+    fun `a resting finger does not grab an item that lands on it`() {
+        val w = world()
+        w.settle()
+        val item = w.items.minBy { it.x }
+        // Finger goes down beside the item, then stays put while the item hops and comes back down onto it.
+        w.pointerDown(POINTER, item.x + item.radius * 2, item.y)
+        item.x = item.x + item.radius * 2
+        for (i in 0 until 10) {
+            w.pointerMove(POINTER, item.x, item.y)
+            w.step(DT)
+        }
+        assertEquals(ItemState.FREE, item.state)
+    }
+
+    @Test
+    fun `a drag-through pickup released at once is a drag, not an easy-mode tap`() {
+        val w = world(easy = true)
+        w.settle()
+        val item = w.items.minBy { it.x }
+        w.pointerDown(POINTER, item.x, H * 0.1f)
+        w.step(DT)
+        w.pointerMove(POINTER, item.x, item.y)
+        w.pointerUp(POINTER)
+        w.run(0.3f)
+        assertTrue(item.state == ItemState.FREE || item.state == ItemState.SINKING)
+        assertFalse(item.state == ItemState.FLYING)
+    }
+
+    @Test
     fun `lost pointers release their items`() {
         val w = world()
         w.settle()

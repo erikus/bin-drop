@@ -1,5 +1,6 @@
 package dev.estaab.bindrop
 
+import android.app.ActivityManager
 import android.os.Bundle
 import android.view.KeyEvent
 import android.view.MotionEvent
@@ -34,13 +35,29 @@ class MainActivity : ComponentActivity() {
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         WindowCompat.setDecorFitsSystemWindows(window, false)
         setContent {
-            GameScreen(settings = settings, sounds = sounds)
+            GameScreen(settings = settings, sounds = sounds, onPinChange = ::setPinned)
         }
     }
 
     override fun onResume() {
         super.onResume()
         hideSystemBars()
+        if (settings.pinApp) requestPin()
+    }
+
+    /**
+     * Pins the app with Android's lock-task mode ("app pinning"): while pinned, swiping in from the screen edges
+     * can no longer open the notification shade, go Home or open Recents, so a toddler's stray edge touches stay in
+     * the game. Android asks the parent to confirm the first request after each launch.
+     */
+    private fun setPinned(on: Boolean) {
+        settings.updatePinApp(on)
+        if (on) requestPin() else stopLockTask()
+    }
+
+    private fun requestPin() {
+        val activityManager = getSystemService(ActivityManager::class.java)
+        if (activityManager.lockTaskModeState == ActivityManager.LOCK_TASK_MODE_NONE) startLockTask()
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {

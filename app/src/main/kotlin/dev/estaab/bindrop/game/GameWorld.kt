@@ -212,24 +212,16 @@ class GameWorld(private val random: Random = Random.Default) {
 
     // ---------------------------------------------------------------- input
 
+    /** Last known position of each pressed pointer, so a move can test the whole swept segment. */
+    private val pointerLast = HashMap<Long, FingerSample>()
+
     fun pointerDown(pointerId: Long, x: Float, y: Float) {
         lastInteraction = time
+        pointerLast[pointerId] = FingerSample(x, y, time)
         val r = itemRadius()
-        // Nearest grabbable item wins; the last-drawn (topmost) breaks ties by iterating in reverse.
-        var best: Item? = null
-        var bestDist = Float.MAX_VALUE
-        for (i in items.indices.reversed()) {
-            val item = items[i]
-            if (item.state != ItemState.FREE) continue
-            val d = hypot(item.x - x, item.y - y)
-            if (d <= item.radius * HIT_RADIUS_FACTOR && d < bestDist) {
-                best = item
-                bestDist = d
-            }
-        }
-        val item = best
+        val item = nearestFreeItem(x, y, x, y)
         if (item != null) {
-            grab(item, pointerId, x, y)
+            grab(item, pointerId, x, y, dragging = false)
             return
         }
         // Tapping a bin makes it wiggle.
@@ -242,7 +234,30 @@ class GameWorld(private val random: Random = Random.Default) {
         }
     }
 
-    private fun grab(item: Item, pointerId: Long, x: Float, y: Float) {
+    /**
+     * The grabbable item nearest the segment from (x0, y0) to (x1, y1), within the hit radius, or null.
+     * The last-drawn (topmost) item breaks ties by iterating in reverse.
+     */
+    private fun nearestFreeItem(x0: Float, y0: Float, x1: Float, y1: Float): Item? {
+        var best: Item? = null
+        var bestDist = Float.MAX_VALUE
+        for (i in items.indices.reversed()) {
+            val item = items[i]
+            if (item.state != ItemState.FREE) continue
+            val d = distanceToSegment(item.x, item.y, x0, y0, x1, y1)
+            if (d <= item.radius * HIT_RADIUS_FACTOR && d < bestDist) {
+                best = item
+                bestDist = d
+            }
+        }
+        return best
+    }
+
+    /**
+     * @param dragging true when the finger was already moving when it reached the item (a drag-through pickup),
+     *   so the release can never count as a tap.
+     */
+    private fun grab(item: Item, pointerId: Long, x: Float, y: Float, dragging: Boolean) {
         item.state = ItemState.HELD
         item.heldBy = pointerId
         item.onGround = false
@@ -252,7 +267,7 @@ class GameWorld(private val random: Random = Random.Default) {
         item.grabTime = time
         item.grabX = x
         item.grabY = y
-        item.moved = false
+        item.moved = dragging
         item.history.clear()
         item.history.addLast(FingerSample(x, y, time))
         // Move the held item to the end so it draws on top.
@@ -262,7 +277,17 @@ class GameWorld(private val random: Random = Random.Default) {
     }
 
     fun pointerMove(pointerId: Long, x: Float, y: Float) {
-        val item = heldBy(pointerId) ?: return
+        val prev = pointerLast[pointerId]
+        pointerLast[pointerId] = FingerSample(x, y, time)
+        var item = heldBy(pointerId)
+        if (item == null) {
+            // An empty finger that sweeps across an item picks it up mid-drag. Only one item per finger: once
+            // holding, the finger keeps that item until it lifts, however many others it crosses. A finger that
+            // is not moving does not grab, so an item landing on a resting finger stays free.
+            if (prev == null || (prev.x == x && prev.y == y)) return
+            item = nearestFreeItem(prev.x, prev.y, x, y) ?: return
+            grab(item, pointerId, x, y, dragging = true)
+        }
         lastInteraction = time
         val r = item.radius
         item.x = x.coerceIn(r, width - r)
@@ -273,12 +298,14 @@ class GameWorld(private val random: Random = Random.Default) {
     }
 
     fun pointerUp(pointerId: Long) {
+        pointerLast.remove(pointerId)
         val item = heldBy(pointerId) ?: return
         release(item)
     }
 
     /** Releases everything held by a pointer that is no longer pressed (lost cancel events, etc). */
     fun releaseAllExcept(pressed: Set<Long>) {
+        pointerLast.keys.retainAll(pressed)
         for (item in items) {
             if (item.state == ItemState.HELD && item.heldBy !in pressed) release(item)
         }
@@ -579,4 +606,13 @@ class GameWorld(private val random: Random = Random.Default) {
         items.lastOrNull { it.state == ItemState.HELD }?.let { return it }
         return items.filter { it.state == ItemState.FREE && !it.onGround }.minByOrNull { it.y }
     }
+}
+
+/** Distance from point (px, py) to the segment (x0, y0)-(x1, y1); a zero-length segment degrades to a point. */
+internal fun distanceToSegment(px: Float, py: Float, x0: Float, y0: Float, x1: Float, y1: Float): Float {
+    val dx = x1 - x0
+    val dy = y1 - y0
+    val lengthSq = dx * dx + dy * dy
+    val t = if (lengthSq == 0f) 0f else (((px - x0) * dx + (py - y0) * dy) / lengthSq).coerceIn(0f, 1f)
+    return hypot(px - (x0 + t * dx), py - (y0 + t * dy))
 }

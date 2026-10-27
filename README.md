@@ -8,7 +8,8 @@ asset sources and licenses.
 ## Playing
 
 - **Drag** an item and let go above a bin: it falls in, the bin bounces and grins,
-  confetti and stars fly. Every 5th drop gets a bigger celebration; every 3rd drop
+  confetti and stars fly. A drag that starts on empty ground picks up the first item
+  the finger crosses; each finger carries one item at a time. Every 5th drop gets a bigger celebration; every 3rd drop
   wipes in a new background (day → sunset → night → snow → spring → ocean → dusk),
   each with its own set of things to throw away.
 - **Tap** a bin to make it wiggle.
@@ -16,8 +17,11 @@ asset sources and licenses.
   volume keys are swallowed; leave the game with Home.
 - **Parent settings**: hold the gear in the top-right corner for 1.5 s. Toggles
   **Easy mode** (tapping an item flings it into a bin by itself, items are bigger
-  and the "magnet" toward the bins is stronger), sound, and colours.
-- For a flight: pin the app (Recents → app icon → Pin) so Home doesn't leave it.
+  and the "magnet" toward the bins is stronger), sound, colours, and **Pin app**.
+- **Pin app** uses Android's app pinning (lock-task mode) so edge swipes no longer
+  open the notification shade, Home or Recents. Android shows a confirmation the
+  first time after each launch; tap "Got it". Turn the toggle off in parent
+  settings to unpin (Android's own unpin gesture works too).
   The Thor's floating "game assistant" bubble sits on the right edge and can be
   turned off in the Thor's own settings.
 

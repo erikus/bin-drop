@@ -164,7 +164,7 @@ class SpriteCache(resources: Resources) {
 }
 
 @Composable
-fun GameScreen(settings: Settings, sounds: Sounds) {
+fun GameScreen(settings: Settings, sounds: Sounds, onPinChange: (Boolean) -> Unit) {
     val context = LocalContext.current
     val world = remember { GameWorld() }
     val sprites = remember { SpriteCache(context.resources) }
@@ -225,7 +225,7 @@ fun GameScreen(settings: Settings, sounds: Sounds) {
         )
 
         if (showParent) {
-            ParentDialog(settings = settings, onDismiss = { showParent = false })
+            ParentDialog(settings = settings, onPinChange = onPinChange, onDismiss = { showParent = false })
         }
     }
 }
@@ -252,7 +252,7 @@ private fun ParentGear(modifier: Modifier, onOpen: () -> Unit) {
 }
 
 @Composable
-private fun ParentDialog(settings: Settings, onDismiss: () -> Unit) {
+private fun ParentDialog(settings: Settings, onPinChange: (Boolean) -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         confirmButton = { TextButton(onClick = onDismiss) { Text("Done") } },
@@ -261,6 +261,7 @@ private fun ParentDialog(settings: Settings, onDismiss: () -> Unit) {
             Column {
                 SettingRow("Easy mode (tap to bin)", settings.easyMode) { settings.updateEasyMode(it) }
                 SettingRow("Sound", settings.sound) { settings.updateSound(it) }
+                SettingRow("Pin app (blocks Home & shade)", settings.pinApp, onPinChange)
                 Spacer(Modifier.height(12.dp))
                 Text("Bin colours", style = MaterialTheme.typography.labelLarge)
                 Spacer(Modifier.height(6.dp))
@@ -271,7 +272,8 @@ private fun ParentDialog(settings: Settings, onDismiss: () -> Unit) {
                 }
                 Spacer(Modifier.height(12.dp))
                 Text(
-                    "Any gamepad button also swaps colours. To keep the game up, pin it from the Recents screen.",
+                    "Any gamepad button also swaps colours. Pinning asks Android for confirmation once per launch; " +
+                        "turn it off here to unpin.",
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
