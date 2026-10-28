@@ -1,7 +1,8 @@
 # Bin Drop
 
 A toddler game for the AYN Thor's top screen: drag trash into three Recology-style
-wheeled bins (Blue / Grey / Green) and get confetti. Every bin accepts every item;
+wheeled bins (Blue / Grey / Green) and get confetti. One bin sits at the left edge and
+two at the right, so there is a bin near either hand. Every bin accepts every item;
 there are no wrong answers. See `docs/DESIGN.md` for the design, `ASSETS.md` for
 asset sources and licenses.
 
@@ -12,8 +13,9 @@ asset sources and licenses.
   the finger crosses; each finger carries one item at a time. Every 5th drop gets a bigger celebration; every 3rd drop
   wipes in a new background (day → sunset → night → snow → spring → ocean → dusk),
   each with its own set of things to throw away.
-- **Tap** a bin to make it wiggle.
-- **Any gamepad button / d-pad** swaps the bin colours (5 palettes). Back and
+- **Tap** a bin to make it wiggle. Three quick taps on the same bin swap the bin
+  colours (5 palettes).
+- **Any gamepad button / d-pad** also swaps the bin colours. Back and
   volume keys are swallowed; leave the game with Home.
 - **Parent settings**: hold the gear in the top-right corner for 1.5 s. Toggles
   **Easy mode** (tapping an item flings it into a bin by itself, items are bigger

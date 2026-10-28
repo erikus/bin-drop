@@ -2,7 +2,7 @@
 
 A toddler (18 months) game for the AYN Thor's top screen (landscape). Side view:
 three Recology-style 32-gallon wheeled carts stand on the ground (default
-Blue / Grey / Green). Trash items land on the left; the child drags an item and
+Blue / Grey / Green). Trash items land in the middle; the child drags an item and
 lets go above a bin — it falls in and the game celebrates. There are no wrong
 answers: every bin accepts every item.
 
@@ -22,15 +22,15 @@ answers: every bin accepts every item.
 
 ## Game rules
 
-- World is the canvas in px. Ground line at `H * 0.86`. Bins occupy the right ~52% of the width, items land in the left part.
+- World is the canvas in px. Ground line at `H * 0.86`. One bin hugs the left edge and two the right edge (so a bin is near either hand); items land in the zone between them.
 - Keep `TARGET_ITEMS` (5) loose items around; a new one drops from above the top edge at a random x in the item zone ~0.6 s after one is binned.
 - Item radius ≈ `H * 0.075` (bigger in easy mode). Touch hit radius = 1.4 × radius; the nearest item wins.
 - Held item rides `LIFT` px above the finger so the finger does not cover it; scales to 1.15×.
 - Release: velocity = finger velocity clamped (`MAX_THROW`); gravity pulls it down; bounces on the ground with damping; bounces off screen sides.
-- Capture: item is falling (vy > 0), not held, its centre x within the bin mouth (± magnet margin), and its centre y crosses the mouth y this frame → item becomes *sinking*: keeps falling behind the bin's front wall for `SINK_TIME`, then is removed.
+- Capture: item is falling (vy > 0), not held, has been let go of by the child at least once (fresh spawns raining in beside a bin are never magnetised or captured), its centre x within the bin mouth (± magnet margin), and its centre y crosses the mouth y this frame → item becomes *sinking*: keeps falling behind the bin's front wall for `SINK_TIME`, then is removed.
 - Celebration on capture: confetti burst (40) + star ring from the mouth, bin squash-and-stretch and lid flap, happy eyes for 1 s, ⭐ pop, `sfx_drop` + `sfx_chime`. Every 5th capture: full-screen confetti rain + 🎉 + `sfx_bigwin`.
 - Every 3rd capture: the background changes (`Scenes.kt`, 7 looks: day, sunset, night, snow, spring, ocean, dusk — each with its own sky object and animated ambient decoration) via a circular wipe growing out of the bin that took the item, all bins wiggle, `sfx_magic`. Novelty to hold a toddler's attention. Each scene has its own item set (`ItemCatalog.byScene`: picnic food at sunset, bedtime things at night, winter gear in snow, garden bugs and flowers in spring, sea creatures at the ocean, camping things at dusk); on a scene change the resting items poof away with a sparkle and the new set rains in.
-- Tapping a bin: wiggle + `sfx_boing`. Bin eyes follow the nearest held item.
+- Tapping a bin: wiggle + `sfx_boing`. Three taps on the same bin within 0.6 s of each other cycle the palette (for devices without buttons). Bin eyes follow the nearest held item.
 - Multi-touch: each pointer id owns at most one item.
 
 ## Palettes (body, lid, accent)

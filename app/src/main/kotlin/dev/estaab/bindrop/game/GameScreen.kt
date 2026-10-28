@@ -183,6 +183,11 @@ fun GameScreen(settings: Settings, sounds: Sounds, onPinChange: (Boolean) -> Uni
                 last = now
                 world.step(dt)
                 while (world.sounds.isNotEmpty()) sounds.play(world.sounds.removeFirst())
+                while (world.events.isNotEmpty()) {
+                    when (world.events.removeFirst()) {
+                        GameEvent.CYCLE_PALETTE -> settings.cyclePalette()
+                    }
+                }
                 frame++
             }
         }
@@ -272,7 +277,8 @@ private fun ParentDialog(settings: Settings, onPinChange: (Boolean) -> Unit, onD
                 }
                 Spacer(Modifier.height(12.dp))
                 Text(
-                    "Any gamepad button also swaps colours. Pinning asks Android for confirmation once per launch; " +
+                    "Any gamepad button, or three quick taps on a bin, also swaps colours. " +
+                        "Pinning asks Android for confirmation once per launch; " +
                         "turn it off here to unpin.",
                     style = MaterialTheme.typography.bodySmall,
                 )

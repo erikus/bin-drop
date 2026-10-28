@@ -8,7 +8,8 @@ import kotlin.random.Random
 
 // Layout, as fractions of the canvas height (H) or width (W). Everything is laid out in px on resize().
 private const val GROUND_Y_FRAC = 0.86f
-private const val BIN_ZONE_LEFT_FRAC = 0.47f       // bins occupy [this * W, W)
+private const val LEFT_BINS = 1                    // bins at the left edge; the rest sit at the right edge
+private const val BIN_GAP_FRAC = 0.06f             // of H, between bins and between a bin and the screen edge
 private const val BIN_WIDTH_FRAC = 0.23f           // of H
 private const val BIN_HEIGHT_FRAC = 0.42f          // of H
 private const val ITEM_RADIUS_FRAC = 0.09f
@@ -39,6 +40,8 @@ private const val FLIGHT_TIME = 0.75f
 private const val FLIGHT_ARC_FRAC = 0.35f          // of H
 private const val SPAWN_DELAY = 0.6f
 private const val TAP_MAX_TIME = 0.3f
+private const val BIN_TAP_GAP = 0.6f               // max seconds between taps for them to count as consecutive
+private const val BIN_TAPS_TO_CYCLE_PALETTE = 3
 private const val TAP_SLOP_FACTOR = 0.5f           // of item radius
 private const val HELD_SCALE = 1.15f
 private const val SCALE_RATE = 12f                 // per second, approach rate for item scale
@@ -62,6 +65,9 @@ private const val PARTY_POP_SIZE_FRAC = 0.2f
 
 enum class Sfx { POP, DROP, CHIME, BOING, BIGWIN, MAGIC }
 
+/** Things the game asks the UI layer to do. */
+enum class GameEvent { CYCLE_PALETTE }
+
 enum class ItemState { FREE, HELD, FLYING, SINKING }
 
 class Item(val id: Int, val spec: ItemSpec, var x: Float, var y: Float, var radius: Float) {
@@ -73,6 +79,8 @@ class Item(val id: Int, val spec: ItemSpec, var x: Float, var y: Float, var radi
     var state = ItemState.FREE
     var heldBy: Long = NO_POINTER
     var onGround = false
+    /** True once the child has let go of this item. Only dropped items feel the bin magnet and get captured. */
+    var dropped = false
 
     // HELD: finger history for throw velocity, and tap detection.
     val history = ArrayDeque<FingerSample>()
@@ -108,6 +116,8 @@ class Bin(val index: Int) {
     /** Seconds since the last capture, drives squash/lid/happy face. Large when idle. */
     var sinceCapture = 100f
     var sinceWiggle = 100f
+    var tapCount = 0
+    var lastTapTime = -100f
     var blinkTimer = 0f
     var blinkPhase = 0f
     val happy: Boolean get() = sinceCapture < BIN_HAPPY_TIME
@@ -134,6 +144,8 @@ class GameWorld(private val random: Random = Random.Default) {
     val particles = Particles(random)
     /** Sound events produced since the UI last drained them. */
     val sounds = ArrayDeque<Sfx>()
+    /** Requests to the UI produced since it last drained them. */
+    val events = ArrayDeque<GameEvent>()
 
     var time = 0f
         private set
@@ -151,6 +163,9 @@ class GameWorld(private val random: Random = Random.Default) {
     var sceneRevealY = 0f
         private set
     val groundY: Float get() = height * GROUND_Y_FRAC
+    /** Items spawn and rest between the left-edge bin(s) and the right-edge bins. */
+    val itemZoneLeft: Float get() = bins[LEFT_BINS - 1].right
+    val itemZoneRight: Float get() = bins[LEFT_BINS].left
 
     private var spawnTimer = 0f
     private var nextId = 1
@@ -177,17 +192,21 @@ class GameWorld(private val random: Random = Random.Default) {
         if (items.isEmpty()) repeat(TARGET_ITEMS) { spawn(initial = true) }
     }
 
+    /** One bin hugs the left edge and the rest the right edge, so either hand has a bin close by. */
     private fun layoutBins() {
-        val zoneLeft = width * BIN_ZONE_LEFT_FRAC
         val binW = height * BIN_WIDTH_FRAC
         val binH = height * BIN_HEIGHT_FRAC
-        val n = bins.size
-        val gap = (width - zoneLeft - n * binW) / (n + 1)
+        val gap = height * BIN_GAP_FRAC
+        val rightBins = bins.size - LEFT_BINS
         for ((i, bin) in bins.withIndex()) {
             bin.width = binW
             bin.height = binH
-            bin.left = zoneLeft + gap + i * (binW + gap)
             bin.top = groundY - binH
+            bin.left = if (i < LEFT_BINS) {
+                gap + i * (binW + gap)
+            } else {
+                width - (rightBins - (i - LEFT_BINS)) * (binW + gap)
+            }
         }
     }
 
@@ -195,8 +214,7 @@ class GameWorld(private val random: Random = Random.Default) {
 
     private fun spawn(initial: Boolean) {
         val r = itemRadius()
-        val zoneRight = width * BIN_ZONE_LEFT_FRAC - r
-        val x = r + random.nextFloat() * (zoneRight - 2 * r)
+        val x = itemZoneLeft + r + random.nextFloat() * (itemZoneRight - itemZoneLeft - 2 * r)
         val y = if (initial) groundY - r - random.nextFloat() * height * 0.5f else -2 * r
         // Prefer kinds not already on screen so the set stays varied.
         val pool = ItemCatalog.forScene(Scenes.all[sceneIndex])
@@ -224,11 +242,17 @@ class GameWorld(private val random: Random = Random.Default) {
             grab(item, pointerId, x, y, dragging = false)
             return
         }
-        // Tapping a bin makes it wiggle.
+        // Tapping a bin makes it wiggle; three quick taps on the same bin swap the bin colours.
         for (bin in bins) {
             if (x in bin.left - r * 0.3f..bin.right + r * 0.3f && y in bin.top - r..bin.bottom) {
                 bin.sinceWiggle = 0f
                 sounds.add(Sfx.BOING)
+                bin.tapCount = if (time - bin.lastTapTime <= BIN_TAP_GAP) bin.tapCount + 1 else 1
+                bin.lastTapTime = time
+                if (bin.tapCount >= BIN_TAPS_TO_CYCLE_PALETTE) {
+                    bin.tapCount = 0
+                    events.add(GameEvent.CYCLE_PALETTE)
+                }
                 return
             }
         }
@@ -317,6 +341,7 @@ class GameWorld(private val random: Random = Random.Default) {
     private fun release(item: Item) {
         val isTap = !item.moved && time - item.grabTime <= TAP_MAX_TIME
         item.heldBy = Item.NO_POINTER
+        item.dropped = true
         if (isTap) {
             if (easyMode) {
                 startFlight(item)
@@ -408,16 +433,17 @@ class GameWorld(private val random: Random = Random.Default) {
 
         if (checkCapture(item, prevY)) return
 
-        // Bin bodies are solid from the side: push items that dip below the mouth back out.
+        // Bin bodies are solid from the side: push items that dip below the mouth back out, toward the nearer
+        // side unless that side has no room between the bin and the screen edge.
         for (bin in bins) {
             if (item.y > bin.mouthY && item.x + r * 0.5f > bin.left && item.x - r * 0.5f < bin.right) {
+                val outLeft = bin.left - r * 0.5f
+                val outRight = bin.right + r * 0.5f
+                val leftFits = outLeft >= r
+                val rightFits = outRight <= width - r
                 val toLeft = item.x - bin.left
                 val toRight = bin.right - item.x
-                if (toLeft < toRight) {
-                    item.x = bin.left - r * 0.5f
-                } else {
-                    item.x = bin.right + r * 0.5f
-                }
+                item.x = if ((toLeft < toRight && leftFits) || !rightFits) outLeft else outRight
                 item.vx = -item.vx * WALL_BOUNCE
             }
         }
@@ -453,7 +479,7 @@ class GameWorld(private val random: Random = Random.Default) {
 
     /** Pulls a falling item toward the nearest bin mouth when it is close enough horizontally and above it. */
     private fun applyMagnet(item: Item, dt: Float) {
-        if (item.vy <= 0f) return
+        if (!item.dropped || item.vy <= 0f) return
         val bin = magnetBin(item) ?: return
         if (item.y > bin.mouthY) return
         val pull = if (easyMode) MAGNET_PULL_EASY else MAGNET_PULL
@@ -476,7 +502,7 @@ class GameWorld(private val random: Random = Random.Default) {
     }
 
     private fun checkCapture(item: Item, prevY: Float): Boolean {
-        if (item.vy <= 0f) return false
+        if (!item.dropped || item.vy <= 0f) return false
         val bin = magnetBin(item) ?: return false
         if (prevY < bin.mouthY && item.y >= bin.mouthY) {
             capture(item, bin)

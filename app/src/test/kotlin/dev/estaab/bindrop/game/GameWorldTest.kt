@@ -28,15 +28,94 @@ class GameWorldTest {
     private fun GameWorld.settle() = run(3f)
 
     @Test
-    fun `starts with five items resting left of the bins`() {
+    fun `starts with five items resting between the left bin and the right bins`() {
         val w = world()
         w.settle()
         assertEquals(5, w.items.size)
-        val binsLeft = w.bins.first().left
         for (item in w.items) {
-            assertTrue("item ${item.spec.name} at ${item.x} should be left of ${binsLeft}", item.x < binsLeft)
+            assertTrue("item ${item.spec.name} at ${item.x} should be inside ${w.itemZoneLeft}..${w.itemZoneRight}",
+                item.x > w.itemZoneLeft && item.x < w.itemZoneRight)
             assertTrue(item.onGround)
         }
+    }
+
+    @Test
+    fun `items raining in beside a bin are not captured until the child drops them`() {
+        val w = world(easy = true)
+        w.settle()
+        assertEquals(0, w.captures)
+        // Items that spawn next to the left bin fall past it untouched by the magnet.
+        repeat(6) {
+            val item = w.items.first { it.state == ItemState.FREE }
+            w.pointerDown(POINTER, item.x, item.y)
+            w.step(DT)
+            w.pointerMove(POINTER, w.bins[1].centerX, H * 0.3f)
+            w.step(DT)
+            w.pointerUp(POINTER)
+            w.run(2.5f)
+        }
+        assertEquals("only the six deliberate drops count", 6, w.captures)
+    }
+
+    @Test
+    fun `one bin sits at the left edge and the others at the right edge`() {
+        val w = world()
+        val left = w.bins.filter { it.centerX < W / 2 }
+        val right = w.bins.filter { it.centerX > W / 2 }
+        assertEquals(1, left.size)
+        assertEquals(2, right.size)
+        assertTrue(left.single().left < W * 0.1f)
+        assertTrue(right.maxOf { it.right } > W * 0.9f)
+        assertTrue("room for items", w.itemZoneRight - w.itemZoneLeft > W * 0.4f)
+    }
+
+    @Test
+    fun `an item dropped between the left bin and the screen edge is pushed back into play`() {
+        val w = world()
+        w.settle()
+        val bin = w.bins.minBy { it.left }
+        val item = w.items.minBy { it.x }
+        w.pointerDown(POINTER, item.x, item.y)
+        w.step(DT)
+        w.pointerMove(POINTER, bin.left + item.radius * 0.2f, bin.top + bin.height * 0.5f)
+        w.step(DT)
+        w.pointerUp(POINTER)
+        w.settle()
+        assertEquals(ItemState.FREE, item.state)
+        assertTrue("item at ${item.x} should rest right of the left bin", item.x >= bin.right)
+    }
+
+    @Test
+    fun `three quick taps on a bin ask for the next palette`() {
+        val w = world()
+        w.settle()
+        val bin = w.bins[1]
+        val x = bin.centerX
+        val y = bin.top + bin.height * 0.5f
+        repeat(2) {
+            w.pointerDown(POINTER, x, y)
+            w.pointerUp(POINTER)
+            w.run(0.2f)
+        }
+        assertTrue(w.events.isEmpty())
+        w.pointerDown(POINTER, x, y)
+        w.pointerUp(POINTER)
+        assertEquals(listOf(GameEvent.CYCLE_PALETTE), w.events.toList())
+    }
+
+    @Test
+    fun `slow taps on a bin do not change the palette`() {
+        val w = world()
+        w.settle()
+        val bin = w.bins[2]
+        val x = bin.centerX
+        val y = bin.top + bin.height * 0.5f
+        repeat(4) {
+            w.pointerDown(POINTER, x, y)
+            w.pointerUp(POINTER)
+            w.run(1f)
+        }
+        assertTrue(w.events.isEmpty())
     }
 
     @Test
