@@ -101,3 +101,20 @@ to about -3 dBFS with ffmpeg. The Kenney sounds are otherwise unmodified.
 | sfx_bigwin.ogg | Kenney "Digital Audio" — https://kenney.nl/assets/digital-audio | Audio/powerUp1.ogg | CC0 1.0 |
 
 Kenney license: Creative Commons Zero, CC0 — http://creativecommons.org/publicdomain/zero/1.0/
+
+## Voices
+
+`voice_<bin>_<word>.ogg` (27 files: 3 bins × blue, red, pink, brown, grey, orange,
+purple, green, yellow) are synthesized by `tools/make_voices.py` with Piper TTS
+(https://github.com/OHF-Voice/piper1-gpl, GPL-3.0 for the tool itself; its output is
+not covered by the GPL). Each clip is the word with an exclamation mark, pitched up a
+little, trimmed and peak-normalized to about -3 dBFS, mono 44.1 kHz OGG Vorbis.
+
+| Bin | Piper voice | Dataset | Dataset license |
+|---|---|---|---|
+| 0 (left) | en_GB-alba-medium | Edinburgh DataShare, https://datashare.ed.ac.uk/handle/10283/3270 | CC BY 4.0 |
+| 1 | en_US-joe-medium | OHF-Voice voice-datasets, https://github.com/OHF-Voice/voice-datasets | CC0 |
+| 2 | en_GB-aru-medium, speaker id 5 | Liverpool ARU speech corpus, https://www.liverpool.ac.uk/architecture/research/acoustics-research-unit/speech-corpus/ | CC BY 4.0 |
+
+Voice models from https://huggingface.co/rhasspy/piper-voices (model cards list the
+datasets above). The models are cached in `tools/.piper-voices/` (gitignored).

@@ -97,10 +97,35 @@ class GameWorldTest {
             w.pointerUp(POINTER)
             w.run(0.2f)
         }
-        assertTrue(w.events.isEmpty())
+        assertEquals("the first tap speaks, the second is inside the voice cooldown",
+            listOf(GameEvent.Speak(1)), w.events.toList())
+        w.events.clear()
         w.pointerDown(POINTER, x, y)
         w.pointerUp(POINTER)
-        assertEquals(listOf(GameEvent.CYCLE_PALETTE), w.events.toList())
+        assertEquals("palette changes first so the bin announces its new colour",
+            listOf(GameEvent.CyclePalette, GameEvent.Speak(1)), w.events.toList())
+    }
+
+    @Test
+    fun `a bin says its colour when it catches an item`() {
+        val w = world(easy = true)
+        w.settle()
+        val item = w.items.first()
+        w.pointerDown(POINTER, item.x, item.y)
+        w.step(DT)
+        w.pointerUp(POINTER)
+        w.run(2f)
+        assertEquals(1, w.captures)
+        val bin = w.bins.single { it.count == 1 }
+        assertEquals(listOf(GameEvent.Speak(bin.index)), w.events.toList())
+    }
+
+    @Test
+    fun `every spoken colour has a voice clip for every bin`() {
+        // Sounds.kt is Android-only; this mirrors its startup check so a new palette word fails here first.
+        val words = Palettes.all.flatMap { it.bins }.map { it.spoken }.toSet()
+        for (word in words) assertTrue(word in ColorWord.values())
+        assertEquals(3, Palettes.all.first().bins.size)
     }
 
     @Test
@@ -115,7 +140,7 @@ class GameWorldTest {
             w.pointerUp(POINTER)
             w.run(1f)
         }
-        assertTrue(w.events.isEmpty())
+        assertEquals("each slow tap just speaks", List(4) { GameEvent.Speak(2) }, w.events.toList())
     }
 
     @Test

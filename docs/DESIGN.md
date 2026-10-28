@@ -30,7 +30,8 @@ answers: every bin accepts every item.
 - Capture: item is falling (vy > 0), not held, has been let go of by the child at least once (fresh spawns raining in beside a bin are never magnetised or captured), its centre x within the bin mouth (± magnet margin), and its centre y crosses the mouth y this frame → item becomes *sinking*: keeps falling behind the bin's front wall for `SINK_TIME`, then is removed.
 - Celebration on capture: confetti burst (40) + star ring from the mouth, bin squash-and-stretch and lid flap, happy eyes for 1 s, ⭐ pop, `sfx_drop` + `sfx_chime`. Every 5th capture: full-screen confetti rain + 🎉 + `sfx_bigwin`.
 - Every 3rd capture: the background changes (`Scenes.kt`, 7 looks: day, sunset, night, snow, spring, ocean, dusk — each with its own sky object and animated ambient decoration) via a circular wipe growing out of the bin that took the item, all bins wiggle, `sfx_magic`. Novelty to hold a toddler's attention. Each scene has its own item set (`ItemCatalog.byScene`: picnic food at sunset, bedtime things at night, winter gear in snow, garden bugs and flowers in spring, sea creatures at the ocean, camping things at dusk); on a scene change the resting items poof away with a sparkle and the new set rains in.
-- Tapping a bin: wiggle + `sfx_boing`. Three taps on the same bin within 0.6 s of each other cycle the palette (for devices without buttons). Bin eyes follow the nearest held item.
+- Tapping a bin: wiggle + `sfx_boing` + the bin says its colour word. Three taps on the same bin within 0.6 s of each other cycle the palette (for devices without buttons) and the bin announces its new colour. Bin eyes follow the nearest held item.
+- Voices: each bin index has its own Piper TTS voice (`tools/make_voices.py`, three distinct pitches) and a clip per basic colour word (`ColorWord`: blue, red, pink, brown, grey, orange, purple, green, yellow). Each palette entry names its `spoken` word, the nearest colour a toddler learns, so navy/aqua say "blue" and teal/lime/olive say "green". A bin speaks on capture and on tap, at most once per 0.8 s except right after a palette change. `GameWorld` emits `GameEvent.Speak(bin)`; the UI resolves the word from the current palette.
 - Multi-touch: each pointer id owns at most one item.
 
 ## Palettes (body, lid, accent)
@@ -61,7 +62,7 @@ Items (Noto Emoji `2D/png/512/emoji_u<hex>.png` → `res/drawable-nodpi/emoji_<n
 
 Effects / decoration: star `2b50`, party `1f389`, sparkles `2728`, heart `2764`, recycle `267b`, seedling `1f331`.
 
-Sounds (`res/raw/`): `sfx_pop.ogg` (pick up), `sfx_drop.ogg` (lands in bin), `sfx_chime.ogg` (success), `sfx_boing.ogg` (bin tapped), `sfx_bigwin.ogg` (every 5th), `sfx_magic.ogg` (scene change, synthesized by `tools/make_magic_sfx.py`). Attribution in `ASSETS.md`.
+Sounds (`res/raw/`): `sfx_pop.ogg` (pick up), `sfx_drop.ogg` (lands in bin), `sfx_chime.ogg` (success), `sfx_boing.ogg` (bin tapped), `sfx_bigwin.ogg` (every 5th), `sfx_magic.ogg` (scene change, synthesized by `tools/make_magic_sfx.py`), `voice_<bin>_<word>.ogg` (bin colour words, Piper TTS via `tools/make_voices.py`). Attribution in `ASSETS.md`.
 
 ## Layout
 

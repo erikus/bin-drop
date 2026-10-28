@@ -13,8 +13,10 @@ asset sources and licenses.
   the finger crosses; each finger carries one item at a time. Every 5th drop gets a bigger celebration; every 3rd drop
   wipes in a new background (day → sunset → night → snow → spring → ocean → dusk),
   each with its own set of things to throw away.
-- **Tap** a bin to make it wiggle. Three quick taps on the same bin swap the bin
-  colours (5 palettes).
+- **Tap** a bin to make it wiggle and say its colour. Each bin has its own voice, and
+  says the nearest colour a toddler would learn (navy and aqua are both "blue"). Bins
+  also say their colour when they catch an item. Three quick taps on the same bin swap
+  the bin colours (5 palettes) and the bin announces its new one.
 - **Any gamepad button / d-pad** also swaps the bin colours. Back and
   volume keys are swallowed; leave the game with Home.
 - **Parent settings**: hold the gear in the top-right corner for 1.5 s. Toggles
@@ -40,7 +42,9 @@ adb shell am start -n dev.estaab.bindrop/.MainActivity --display 0
 ```
 
 `tools/make_magic_sfx.py` (run with `uv run`) regenerates the synthesized
-scene-change sound.
+scene-change sound. `tools/make_voices.py` (also `uv run`; needs ffmpeg) regenerates
+the bins' colour-word clips with Piper TTS, caching the voice models in
+`tools/.piper-voices/`.
 
 On the Thor, display 0 is the top 6" screen (1920×1080 landscape) and display 4 is
 the bottom touchscreen; launcher launches land on display 0. `screencap -d 0` returns

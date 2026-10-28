@@ -21,3 +21,6 @@ signing.properties
 .env.*
 # Local scratch space (one-off scripts, notes); never tracked
 /scratch/
+
+# Piper TTS models cached by tools/make_voices.py
+tools/.piper-voices/

@@ -184,8 +184,12 @@ fun GameScreen(settings: Settings, sounds: Sounds, onPinChange: (Boolean) -> Uni
                 world.step(dt)
                 while (world.sounds.isNotEmpty()) sounds.play(world.sounds.removeFirst())
                 while (world.events.isNotEmpty()) {
-                    when (world.events.removeFirst()) {
-                        GameEvent.CYCLE_PALETTE -> settings.cyclePalette()
+                    when (val event = world.events.removeFirst()) {
+                        GameEvent.CyclePalette -> settings.cyclePalette()
+                        is GameEvent.Speak -> {
+                            val colors = Palettes.all[settings.paletteIndex].bins[event.bin]
+                            sounds.say(event.bin, colors.spoken)
+                        }
                     }
                 }
                 frame++

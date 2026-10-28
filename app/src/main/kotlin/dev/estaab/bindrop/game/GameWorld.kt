@@ -42,6 +42,7 @@ private const val SPAWN_DELAY = 0.6f
 private const val TAP_MAX_TIME = 0.3f
 private const val BIN_TAP_GAP = 0.6f               // max seconds between taps for them to count as consecutive
 private const val BIN_TAPS_TO_CYCLE_PALETTE = 3
+private const val VOICE_COOLDOWN = 0.8f            // seconds before a bin says its colour again
 private const val TAP_SLOP_FACTOR = 0.5f           // of item radius
 private const val HELD_SCALE = 1.15f
 private const val SCALE_RATE = 12f                 // per second, approach rate for item scale
@@ -66,7 +67,12 @@ private const val PARTY_POP_SIZE_FRAC = 0.2f
 enum class Sfx { POP, DROP, CHIME, BOING, BIGWIN, MAGIC }
 
 /** Things the game asks the UI layer to do. */
-enum class GameEvent { CYCLE_PALETTE }
+sealed interface GameEvent {
+    data object CyclePalette : GameEvent
+
+    /** Bin [bin] (0-based) says its colour. Queued after any palette change it caused, so it names the new colour. */
+    data class Speak(val bin: Int) : GameEvent
+}
 
 enum class ItemState { FREE, HELD, FLYING, SINKING }
 
@@ -118,6 +124,7 @@ class Bin(val index: Int) {
     var sinceWiggle = 100f
     var tapCount = 0
     var lastTapTime = -100f
+    var lastSpokeTime = -100f
     var blinkTimer = 0f
     var blinkPhase = 0f
     val happy: Boolean get() = sinceCapture < BIN_HAPPY_TIME
@@ -242,7 +249,8 @@ class GameWorld(private val random: Random = Random.Default) {
             grab(item, pointerId, x, y, dragging = false)
             return
         }
-        // Tapping a bin makes it wiggle; three quick taps on the same bin swap the bin colours.
+        // Tapping a bin makes it wiggle and say its colour; three quick taps on the same bin swap the bin colours
+        // and the bin announces its new one.
         for (bin in bins) {
             if (x in bin.left - r * 0.3f..bin.right + r * 0.3f && y in bin.top - r..bin.bottom) {
                 bin.sinceWiggle = 0f
@@ -251,11 +259,21 @@ class GameWorld(private val random: Random = Random.Default) {
                 bin.lastTapTime = time
                 if (bin.tapCount >= BIN_TAPS_TO_CYCLE_PALETTE) {
                     bin.tapCount = 0
-                    events.add(GameEvent.CYCLE_PALETTE)
+                    events.add(GameEvent.CyclePalette)
+                    speak(bin, force = true)
+                } else {
+                    speak(bin, force = false)
                 }
                 return
             }
         }
+    }
+
+    /** Asks the UI to play the bin's colour word, at most once per [VOICE_COOLDOWN] unless [force]d. */
+    private fun speak(bin: Bin, force: Boolean) {
+        if (!force && time - bin.lastSpokeTime < VOICE_COOLDOWN) return
+        bin.lastSpokeTime = time
+        events.add(GameEvent.Speak(bin.index))
     }
 
     /**
@@ -537,6 +555,7 @@ class GameWorld(private val random: Random = Random.Default) {
         bin.sinceCapture = 0f
         bin.count++
         captures++
+        speak(bin, force = false)
         spawnTimer = SPAWN_DELAY
         lastInteraction = time
 
