@@ -2,8 +2,12 @@
 
 ## Images — Noto Emoji (Apache-2.0)
 
-Source: https://github.com/googlefonts/noto-emoji (license: Apache License 2.0,
-https://github.com/googlefonts/noto-emoji/blob/main/LICENSE).
+Source: https://github.com/googlefonts/noto-emoji. The project's README states that
+its image resources (the PNGs used here) are under the Apache License 2.0, while the
+emoji *fonts* are under the SIL Open Font License 1.1; the repo's root `LICENSE` file
+currently shows the OFL text. `licenses/LICENSE-noto-emoji.txt` is the Apache-2.0
+text as shipped in the noto-emoji repo at tag `v2.034`, included as Apache-2.0
+requires for redistribution.
 Files are the unmodified 512 x 512 PNGs from
 `https://raw.githubusercontent.com/googlefonts/noto-emoji/main/2D/png/512/emoji_u<hex>.png`.
 (The repo moved its PNGs from `png/` to `2D/png/`.)

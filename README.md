@@ -4,7 +4,8 @@ A toddler game for the AYN Thor's top screen: drag trash into three Recology-sty
 wheeled bins (Blue / Grey / Green) and get confetti. One bin sits at the left edge and
 two at the right, so there is a bin near either hand. Every bin accepts every item;
 there are no wrong answers. See `docs/DESIGN.md` for the design, `ASSETS.md` for
-asset sources and licenses.
+asset sources and licenses. The code is MIT licensed (`LICENSE`); the bundled
+emoji art is Apache-2.0 (`licenses/`) and the sounds are CC0 / CC BY 4.0.
 
 ## Playing
 
