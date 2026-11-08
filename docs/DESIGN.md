@@ -11,7 +11,7 @@ answers: every bin accepts every item.
 | Topic | Decision | Why |
 |---|---|---|
 | Stack | Kotlin, Jetpack Compose, single `app/` module, same toolchain as `salchang` (AGP 9.3.1, Kotlin 2.4.10, Gradle 9.6.1, JDK 17 via `~/.gradle/gradle.properties`) | Known-good build on this machine. |
-| Rendering | One Compose `Canvas`, redrawn every frame from `withFrameNanos`; game state is plain Kotlin (`GameWorld`), no engine | A handful of sprites + particles; an engine (libGDX) would add more setup than game. |
+| Rendering | 3D with OpenGL ES 3 in a `GLSurfaceView` (`render3d/`), no engine. `GameWorld` still runs in screen pixels on the main thread and hands the GL thread an immutable `FrameSnapshot` each frame. An off-axis perspective camera maps the play plane z = 0 exactly onto the screen, so touches and physics are unchanged from the 2D version. | Real depth and lighting without an engine's setup cost; keeping the 2D world untouched keeps its tests and feel. |
 | Bins | Drawn procedurally (body, open lid, wheels, handle, a face) | Palette swaps are just colours; no per-colour art. |
 | Items | Noto Emoji PNGs (Apache-2.0, `googlefonts/noto-emoji` `2D/png/512/`) bundled in `res/drawable-nodpi/emoji_<name>.png` | Free, consistent, don't depend on the device's emoji font. |
 | Sounds | CC0 clips (Kenney) in `res/raw/sfx_*.ogg`, played with `SoundPool`; synthesized fallback if a clip cannot be sourced | Small, free, no licensing text needed beyond attribution. |
@@ -76,5 +76,22 @@ app/src/main/kotlin/dev/estaab/bindrop/
   game/Items.kt          item catalog (name → drawable, kind)
   game/GameWorld.kt      state + physics + input (no Compose)
   game/Effects.kt        particles
-  game/GameScreen.kt     Compose canvas, pointer input, frame loop, parent overlay
+  game/GameScreen.kt     GL view host, pointer input, frame loop, parent overlay
+  render3d/StageCamera.kt  off-axis camera: play plane ↔ screen pixels 1:1
+  render3d/StageRenderer.kt  draws a FrameSnapshot: sky, hills, lawn, bins, items, particles
+  render3d/Shapes.kt     procedural meshes (bin shell, slabs, spheres, torus arcs)
+  render3d/Gl.kt         shader, mesh upload, emoji textures, MSAA config
+  render3d/SceneLights.kt  key/ambient light per scene
 ```
+
+## 3D stage
+
+The lawn recedes to two rows of hills, with the sky behind as a gradient backdrop. Sun, moon, rainbow, clouds and
+stars sit far back and are placed along the camera ray through their 2D screen position. Snow, petals, bubbles and
+fireflies fill the depth between the hills and the bins. The lawn's front edge is a grass lip over a dirt face,
+the 3D form of the 2D grass and dirt bands. Bins stand just behind the play plane, so items always pass in front.
+Each bin has a tapered shell with an open mouth, a hinged lid, wheels, a handle, a label and a face. The 2D
+squash, wiggle and lid-flap curves drive its transforms. Items are emoji drawn as stacked alpha-cut layers, which
+gives them a solid edge. A held item moves toward the camera along the finger's ray, so it stays under the finger
+but looks lifted. A captured item moves back into the bin and sinks behind its front wall. The circular scene
+wipe is a stencil disc, and the foreground light blends between the two scenes while it runs.
